@@ -1,0 +1,363 @@
+---
+title: "Caqueta_code"
+author: "Ignacio Sepulveda"
+date: '2023-11-20'
+output: html_document
+---
+
+## Summary of code used for paper 'Reversing deforestation trends in the Colombian Amazon for the avoidance of tipping points' 
+
+# Administrative maps of Colombia
+MGNDEPTO<-st_read(here("MGN DATA/MGN2020_DPTO_POLITICO/MGN_DPTO_POLITICO.shp")) #Departamentos Colombia
+MGNMUNI<-st_read(here("MGN DATA/MGN2020_MPIO_POLITICO/MGN_MPIO_POLITICO.shp")) #Municipalidades Colombia
+CAQUETA<-subset(MGNDEPTO,DPTO_CNMBR=="CAQUETÁ") #Caqueta departamento (mask)
+st_write(CAQUETA,here('SHAPEFILES/CAQUETA.shp'))
+CAQUETAMUNI<-subset(MGNMUNI,DPTO_CNMBR=="CAQUETÁ") #Caquetá municipalidades
+MGNVEREDA<-st_read(here("MGN DATA/VEREDAS2020/CRVeredas_2020.shp")) #Veredas Colombia
+CAQUETAVEREDA<-subset(MGNVEREDA,COD_DPTO==18)
+
+#Caqueta Forest Cover 2000
+FORESTCOVER1<-raster(here("MARYLAND/TREE COVER 2000/Hansen_GFC-2019-v1.7_treecover2000_00N_080W.tif"))
+FORESTCOVER2<-raster(here("MARYLAND/TREE COVER 2000/Hansen_GFC-2019-v1.7_treecover2000_10N_080W.tif"))
+FORESTCOVER3<-raster(here("MARYLAND/TREE COVER 2000/Hansen_GFC-2019-v1.7_treecover2000_10N_070W.tif"))
+FORESTCOVER4<-raster(here("MARYLAND/TREE COVER 2000/Hansen_GFC-2019-v1.7_treecover2000_00N_070W.tif"))
+FORESTCOVER5<-raster(here("MARYLAND/TREE COVER 2000/Hansen_GFC-2019-v1.7_treecover2000_20N_080W.tif"))
+FORESTCOVER<-mosaic(FORESTCOVER1,FORESTCOVER2,FORESTCOVER3,FORESTCOVER4,FORESTCOVER5,fun=min)
+writeRaster(FORESTCOVER,filename=here("MARYLAND/TREE COVER 2000","FORESTCOVERMOSAIC.tif"),format="GTiff",overwrite=T)
+FORESTCOVERMOSAIC<-raster(here("MARYLAND/TREE COVER 2000/FORESTCOVERMOSAIC.tif"))
+FORESTCOVERCOLOMBIA<-mask(crop(FORESTCOVERMOSAIC,COLOMBIA),COLOMBIA)
+FORESTCOVERCAQUETA<-mask(crop(FORESTCOVERCOLOMBIA,CAQUETA),CAQUETA)
+writeRaster(FORESTCOVERCOLOMBIA,filename=here("MARYLAND/TREE COVER 2000","FORESTCOVERCOLOMBIA.tif"),format="GTiff",overwrite=T)
+FORESTCOLMASK<-raster(here("MARYLAND/TREE COVER 2000","FORESTCOVERCOLOMBIA.tif"))
+writeRaster(FORESTCOVERCAQUETA,filename=here("MARYLAND/TREE COVER 2000","FORESTCOVERCAQUETA.tif"),format="GTiff",overwrite=T)
+FORESTCAQMASK<-raster(here("MARYLAND/TREE COVER 2000","FORESTCOVERCAQUETA.tif"))
+
+#University of MARYLAND. Deforestation 2000-2022 version 1.10
+DEFORESTA10<-raster(here("MARYLAND/FOREST LOSS 2001-2022/Hansen_GFC-2022-V1.10_lossyear_10N_080W.tif"))
+DEFORESTB10<-raster(here("MARYLAND/FOREST LOSS 2001-2022/Hansen_GFC-2022-V1.10_lossyear_20N_080W.tif"))
+DEFORESTC10<-raster(here("MARYLAND/FOREST LOSS 2001-2022/Hansen_GFC-2022-V1.10_lossyear_10N_070W.tif"))
+DEFORESTD10<-raster(here("MARYLAND/FOREST LOSS 2001-2022/Hansen_GFC-2022-V1.10_lossyear_00N_080W.tif"))
+DEFORESTE10<-raster(here("MARYLAND/FOREST LOSS 2001-2022/Hansen_GFC-2022-V1.10_lossyear_00N_070W.tif"))
+DEFOREST2022<-raster::mosaic(DEFORESTA10,DEFORESTB10,DEFORESTC10,DEFORESTD10,DEFORESTE10,fun=min) #long time proccesing 
+raster::writeRaster(DEFOREST2022,filename=here("MARYLAND/FOREST LOSS 2001-2022","DEFORESTMOSAIC2022.tif"),format="GTiff",overwrite=TRUE)
+DEFORESTMOSAIC2022<-raster(here("MARYLAND/FOREST LOSS 2001-2022/DEFORESTMOSAIC2022.tif"))
+DEFORESTCOLOMBIA2022<-raster::mask(raster::crop(DEFORESTMOSAIC2022,COLOMBIA),COLOMBIA)
+DEFORESTCAQUETA2022<-raster::mask(raster::crop(DEFORESTCOLOMBIA2022,CAQUETA),CAQUETA)
+raster::writeRaster(DEFORESTCOLOMBIA2022,filename=here("MARYLAND/FOREST LOSS 2001-2022/","DEFORESTCOLOMBIA2022.tif"),format="GTiff",overwrite=F)
+raster::writeRaster(DEFORESTCAQUETA2022,filename=here("MARYLAND/FOREST LOSS 2001-2022/","DEFORESTCAQUETA2022.tif"),format="GTiff",overwrite=F)
+DEFORESTCOLOMBIAmask2022<-raster(here("MARYLAND/FOREST LOSS 2001-2022","DEFORESTCOLOMBIA2022.tif"))
+DEFORESTCAQUETAmask2022<-raster(here("MARYLAND/FOREST LOSS 2001-2022","DEFORESTCAQUETA2022.tif"))
+DEFORESTCAQUETAmask2022A<-DEFORESTCAQUETAmask2022 #to conserve original file
+DEFORESTCAQUETAmask2022A[DEFORESTCAQUETAmask2022<=0]<-NA #0 (no deforestation) as NA to not show on map
+DEFORESTCAQUETAmask2022B<-DEFORESTCAQUETAmask2022A 
+DEFORESTCAQUETAmask2022B[DEFORESTCAQUETAmask2022A>0]<-0 #all values >0 to equal to 0 (no forest cover)
+writeRaster(DEFORESTCAQUETAmask2022B,filename=here("MARYLAND","DEFORESTCAQUETAmask2022B.tif"),format="GTiff",overwrite=F)
+DEFORESTCAQUETAmask2022B<-raster(here("MARYLAND","DEFORESTCAQUETAmask2022B.tif"))
+
+LOSSTOTALCAQUETA<-mosaic(DEFORESTCAQUETAmask2,FORESTCAQMASK,fun=min)
+writeRaster(LOSSTOTALCAQUETA,filename=here("MARYLAND","LOSSTOTALCAQUETA.tif"),format="GTiff",overwrite=T)
+LOSSTOTALCAQUETA<-raster(here("MARYLAND","LOSSTOTALCAQUETA.tif")) #mosaic of forestcover 2000 and deforest 2001-2019 normalized to zero for CAQUETA
+
+LOSSTOTALCAQUETA2020<-mosaic(DEFORESTCAQUETAmask2020B,FORESTCAQMASK,fun=min)
+writeRaster(LOSSTOTALCAQUETA2020,filename=here("MARYLAND","LOSSTOTALCAQUETA2020.tif"),format="GTiff",overwrite=T)
+LOSSTOTALCAQUETA2020<-raster(here("MARYLAND","LOSSTOTALCAQUETA2020.tif")) #mosaic of forestcover 2000 and deforest 2001-2020 normalized to zero for CAQUETA
+
+LOSSTOTALCAQUETA2022<-raster::mosaic(DEFORESTCAQUETAmask2022B,FORESTCAQMASK,fun=min)
+writeRaster(LOSSTOTALCAQUETA2022,filename=here("MARYLAND","LOSSTOTALCAQUETA2022.tif"),format="GTiff",overwrite=T)
+LOSSTOTALCAQUETA2022<-raster(here("MARYLAND","LOSSTOTALCAQUETA2020.tif")) #mosaic of forestcover 2000 and deforest 2001-2022 normalized to zero for CAQUETA
+#Rast
+LOSSTOTALCAQUETA2022<-rast(here("MARYLAND","LOSSTOTALCAQUETA2020.tif")) #mosaic of forestcover 2000 and deforest 2001-2022 normalized to zero for CAQUETA
+
+#FOREST COVER BY YEAR 2000-2019 for prediction model
+F2000<-FORESTCAQMASK
+
+F2001<-DEFORESTCAQUETAmask1
+F2001[F2001>1]<-NA
+F2001[F2001>0]<-0
+F2001m<-mosaic(FORESTCAQMASK,F2001,fun=min)
+
+F2002<-DEFORESTCAQUETAmask1
+F2002[F2002!=2]<-NA
+F2002[F2002>0]<-0
+F2002m<-mosaic(F2001m,F2002,fun=min)
+
+F2003<-DEFORESTCAQUETAmask1
+F2003[F2003!=3]<-NA
+F2003[F2003>0]<-0
+F2003m<-mosaic(F2002m,F2003,fun=min)
+
+F2004<-DEFORESTCAQUETAmask1
+F2004[F2004!=4]<-NA
+F2004[F2004>0]<-0
+F2004m<-mosaic(F2003m,F2004,fun=min)
+
+F2005<-DEFORESTCAQUETAmask1
+F2005[F2005!=5]<-NA
+F2005[F2005>0]<-0
+F2005m<-mosaic(F2004m,F2005,fun=min)
+
+F2006<-DEFORESTCAQUETAmask1
+F2006[F2006!=6]<-NA
+F2006[F2006>0]<-0
+F2006m<-mosaic(F2005m,F2006,fun=min)
+
+F2007<-DEFORESTCAQUETAmask1
+F2007[F2007!=7]<-NA
+F2007[F2007>0]<-0
+F2007m<-mosaic(F2006m,F2007,fun=min)
+
+F2008<-DEFORESTCAQUETAmask1
+F2008[F2008!=8]<-NA
+F2008[F2008>0]<-0
+F2008m<-mosaic(F2007m,F2008,fun=min)
+
+F2009<-DEFORESTCAQUETAmask1
+F2009[F2009!=9]<-NA
+F2009[F2009>0]<-0
+F2009m<-mosaic(F2008m,F2009,fun=min)
+
+F2010<-DEFORESTCAQUETAmask1
+F2010[F2010!=10]<-NA
+F2010[F2010>0]<-0
+F2010m<-mosaic(F2009m,F2010,fun=min)
+
+F2011<-DEFORESTCAQUETAmask1
+F2011[F2011!=11]<-NA
+F2011[F2011>0]<-0
+F2011m<-mosaic(F2010m,F2011,fun=min)
+
+F2012<-DEFORESTCAQUETAmask1
+F2012[F2012!=12]<-NA
+F2012[F2012>0]<-0
+F2012m<-mosaic(F2011m,F2012,fun=min)
+
+F2013<-DEFORESTCAQUETAmask1
+F2013[F2013!=13]<-NA
+F2013[F2013>0]<-0
+F2013m<-mosaic(F2012m,F2013,fun=min)
+
+F2014<-DEFORESTCAQUETAmask1
+F2014[F2014!=14]<-NA
+F2014[F2014>0]<-0
+F2014m<-mosaic(F2013m,F2014,fun=min)
+
+F2015<-DEFORESTCAQUETAmask1
+F2015[F2015!=15]<-NA
+F2015[F2015>0]<-0
+F2015m<-mosaic(F2014m,F2015,fun=min)
+
+F2016<-DEFORESTCAQUETAmask1
+F2016[F2016!=16]<-NA
+F2016[F2016>0]<-0
+F2016m<-mosaic(F2015m,F2016,fun=min)
+
+F2017<-DEFORESTCAQUETAmask1
+F2017[F2017!=17]<-NA
+F2017[F2017>0]<-0
+F2017m<-mosaic(F2016m,F2017,fun=min)
+
+F2018<-DEFORESTCAQUETAmask1
+F2018[F2018!=18]<-NA
+F2018[F2018>0]<-0
+F2018m<-mosaic(F2017m,F2018,fun=min)
+
+F2019<-DEFORESTCAQUETAmask1
+F2019[F2019!=19]<-NA
+F2019[F2019>0]<-0
+F2019m<-mosaic(F2018m,F2019,fun=min)
+
+F2020<-DEFORESTCAQUETAmask2020A
+F2020[F2020!=20]<-NA
+F2020[F2020>0]<-0
+F2020m<-mosaic(F2019r,F2020,fun=min) #new 1.8
+
+F2021<-DEFORESTCAQUETAmask2021A
+F2021[F2021!=21]<-NA
+F2021[F2021>0]<-0
+F2021m<-raster::mosaic(F2020r,F2021,fun=min) #new 1.9
+
+F2022<-DEFORESTCAQUETAmask2022A
+F2022[F2022!=22]<-NA
+F2022[F2022>0]<-0
+F2022m<-raster::mosaic(F2021r,F2022,fun=min) #new 1.10
+
+writeRaster(F2001m,filename=here("MARYLAND","F2001r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2002m,filename=here("MARYLAND","F2002r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2003m,filename=here("MARYLAND","F2003r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2004m,filename=here("MARYLAND","F2004r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2005m,filename=here("MARYLAND","F2005r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2006m,filename=here("MARYLAND","F2006r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2007m,filename=here("MARYLAND","F2007r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2008m,filename=here("MARYLAND","F2008r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2009m,filename=here("MARYLAND","F2009r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2010m,filename=here("MARYLAND","F2010r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2011m,filename=here("MARYLAND","F2011r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2012m,filename=here("MARYLAND","F2012r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2013m,filename=here("MARYLAND","F2013r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2014m,filename=here("MARYLAND","F2014r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2015m,filename=here("MARYLAND","F2015r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2016m,filename=here("MARYLAND","F2016r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2017m,filename=here("MARYLAND","F2017r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2018m,filename=here("MARYLAND","F2018r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2019m,filename=here("MARYLAND","F2019r.tif"),format="GTiff",overwrite=T)
+writeRaster(F2020m,filename=here("MARYLAND","F2020r.tif"),format="GTiff",overwrite=T) #new 1.8
+raster::writeRaster(F2021m,filename=here("MARYLAND","F2021r.tif"),format="GTiff",overwrite=T) #new 1.9
+raster::writeRaster(F2022m,filename=here("MARYLAND","F2022r.tif"),format="GTiff",overwrite=T) #new 1.10
+
+writeRaster(F2001,filename=here("MARYLAND","F2001.tif"),format="GTiff",overwrite=T)
+writeRaster(F2002,filename=here("MARYLAND","F2002.tif"),format="GTiff",overwrite=T)
+writeRaster(F2003,filename=here("MARYLAND","F2003.tif"),format="GTiff",overwrite=T)
+writeRaster(F2004,filename=here("MARYLAND","F2004.tif"),format="GTiff",overwrite=T)
+writeRaster(F2005,filename=here("MARYLAND","F2005.tif"),format="GTiff",overwrite=T)
+writeRaster(F2006,filename=here("MARYLAND","F2006.tif"),format="GTiff",overwrite=T)
+writeRaster(F2007,filename=here("MARYLAND","F2007.tif"),format="GTiff",overwrite=T)
+writeRaster(F2008,filename=here("MARYLAND","F2008.tif"),format="GTiff",overwrite=T)
+writeRaster(F2009,filename=here("MARYLAND","F2009.tif"),format="GTiff",overwrite=T)
+writeRaster(F2010,filename=here("MARYLAND","F2010.tif"),format="GTiff",overwrite=T)
+writeRaster(F2011,filename=here("MARYLAND","F2011.tif"),format="GTiff",overwrite=T)
+writeRaster(F2012,filename=here("MARYLAND","F2012.tif"),format="GTiff",overwrite=T)
+writeRaster(F2013,filename=here("MARYLAND","F2013.tif"),format="GTiff",overwrite=T)
+writeRaster(F2014,filename=here("MARYLAND","F2014.tif"),format="GTiff",overwrite=T)
+writeRaster(F2015,filename=here("MARYLAND","F2015.tif"),format="GTiff",overwrite=T)
+writeRaster(F2016,filename=here("MARYLAND","F2016.tif"),format="GTiff",overwrite=T)
+writeRaster(F2017,filename=here("MARYLAND","F2017.tif"),format="GTiff",overwrite=T)
+writeRaster(F2018,filename=here("MARYLAND","F2018.tif"),format="GTiff",overwrite=T)
+writeRaster(F2019,filename=here("MARYLAND","F2019.tif"),format="GTiff",overwrite=T)
+writeRaster(F2020,filename=here("MARYLAND","F2020.tif"),format="GTiff",overwrite=T) #new 1.8
+raster::writeRaster(F2021,filename=here("MARYLAND","F2021.tif"),format="GTiff",overwrite=T) #new 1.9
+raster::writeRaster(F2022,filename=here("MARYLAND","F2022.tif"),format="GTiff",overwrite=T) #new 1.10
+
+#Each year plus 2000 onwards
+F2000r<-F2000
+F2001r<-raster(here("MARYLAND","F2001r.tif"))
+F2002r<-raster(here("MARYLAND","F2002r.tif"))
+F2003r<-raster(here("MARYLAND","F2003r.tif"))
+F2004r<-raster(here("MARYLAND","F2004r.tif"))
+F2005r<-raster(here("MARYLAND","F2005r.tif"))
+F2006r<-raster(here("MARYLAND","F2006r.tif"))
+F2007r<-raster(here("MARYLAND","F2007r.tif"))
+F2008r<-raster(here("MARYLAND","F2008r.tif"))
+F2009r<-raster(here("MARYLAND","F2009r.tif"))
+F2010r<-raster(here("MARYLAND","F2010r.tif"))
+F2011r<-raster(here("MARYLAND","F2011r.tif"))
+F2012r<-raster(here("MARYLAND","F2012r.tif"))
+F2013r<-raster(here("MARYLAND","F2013r.tif"))
+F2014r<-raster(here("MARYLAND","F2014r.tif"))
+F2015r<-raster(here("MARYLAND","F2015r.tif"))
+F2016r<-raster(here("MARYLAND","F2016r.tif"))
+F2017r<-raster(here("MARYLAND","F2017r.tif"))
+F2018r<-raster(here("MARYLAND","F2018r.tif"))
+F2019r<-raster(here("MARYLAND","F2019r.tif"))
+F2020r<-raster(here("MARYLAND","F2020r.tif")) #new 1.8
+F2021r<-raster(here("MARYLAND","F2021r.tif")) #new 1.9
+F2022r<-raster(here("MARYLAND","F2022r.tif")) #new 1.10
+
+#each year individually
+F2001A<-raster(here("MARYLAND","F2001.tif"))
+F2002A<-raster(here("MARYLAND","F2002.tif"))
+F2003A<-raster(here("MARYLAND","F2003.tif"))
+F2004A<-raster(here("MARYLAND","F2004.tif"))
+F2005A<-raster(here("MARYLAND","F2005.tif"))
+F2006A<-raster(here("MARYLAND","F2006.tif"))
+F2007A<-raster(here("MARYLAND","F2007.tif"))
+F2008A<-raster(here("MARYLAND","F2008.tif"))
+F2009A<-raster(here("MARYLAND","F2009.tif"))
+F2010A<-raster(here("MARYLAND","F2010.tif"))
+F2011A<-raster(here("MARYLAND","F2011.tif"))
+F2012A<-raster(here("MARYLAND","F2012.tif"))
+F2013A<-raster(here("MARYLAND","F2013.tif"))
+F2014A<-raster(here("MARYLAND","F2014.tif"))
+F2015A<-raster(here("MARYLAND","F2015.tif"))
+F2016A<-raster(here("MARYLAND","F2016.tif"))
+F2017A<-raster(here("MARYLAND","F2017.tif"))
+F2018A<-raster(here("MARYLAND","F2018.tif"))
+F2019A<-raster(here("MARYLAND","F2019.tif"))
+F2020A<-raster(here("MARYLAND","F2020.tif")) #new 1.8
+F2021A<-raster(here("MARYLAND","F2021.tif")) #new 1.9
+F2022A<-raster(here("MARYLAND","F2022.tif")) #new 1.10
+
+#Deforestation rate by 5 years
+F2001_05<-mosaic(F2001A,F2002A,F2003A,F2004A,F2005A,fun=min)
+F2006_10<-mosaic(F2006A,F2007A,F2008A,F2009A,F2010A,fun=min)
+F2011_15<-mosaic(F2011A,F2012A,F2013A,F2014A,F2015A,fun=min)
+F2016_19<-mosaic(F2016A,F2017A,F2018A,F2019A,fun=min)
+F2020_22<-mosaic(F2020A,F2021A,F2022A,fun=min)
+
+writeRaster(F2001_05,filename=here("MARYLAND","F2001_05.tif"),format="GTiff",overwrite=T)
+writeRaster(F2006_10,filename=here("MARYLAND","F2006_10.tif"),format="GTiff",overwrite=T)
+writeRaster(F2011_15,filename=here("MARYLAND","F2011_15.tif"),format="GTiff",overwrite=T)
+writeRaster(F2016_19,filename=here("MARYLAND","F2016_19.tif"),format="GTiff",overwrite=T)
+writeRaster(F2020_22,filename=here("MARYLAND","F2020_22.tif"),format="GTiff",overwrite=T)
+
+F2001_05A<-raster(here("MARYLAND","F2001_05.tif"))
+F2006_10A<-raster(here("MARYLAND","F2006_10.tif"))
+F2011_15A<-raster(here("MARYLAND","F2011_15.tif"))
+F2016_19A<-raster(here("MARYLAND","F2016_19.tif"))
+F2020_22A<-raster(here("MARYLAND","F2020_22.tif"))
+
+#Soil quality Harmonized World Soil Database SQ1 to SQ7 
+#ACSII files
+SOILSQlist<-list.files(here("WORLD SOIL DATABASE"),full.names=T,pattern="asc") #7 files sq1 to sq7
+SOILSQraster<-lapply(SOILSQlist,raster)
+SOILSQraster$fun<-mean
+SOILSQmosaic<-do.call(mosaic,SOILSQraster) #mosaic with average for all 7 variables
+proj4string(SOILSQmosaic)<-CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") #transform CRS from NA to WGS84
+writeRaster(SOILSQmosaic,filename=here("WORLD SOIL DATABASE","SOILSQmosaic2.tif"),format="GTiff",overwrite=FALSE)
+SOILSQmosaic2<-raster(here("WORLD SOIL DATABASE/SOILSQmosaic2.tif"))
+SOILSQcolombia<-crop(SOILSQmosaic2,COLOMBIA)
+SOILSQcaqueta<-crop(SOILSQcolombia,CAQUETA)
+writeRaster(SOILSQcaqueta,here("WORLD SOIL DATABASE/SOILSQcaqueta.tif"))
+SOILSQcaqueta<-raster(here("WORLD SOIL DATABASE/SOILSQcaqueta.tif"))
+
+#Aridity index 2019
+ARIDITY<-raster(here("ARIDITY INDEX/7504448/ai_et0/ai_et0.tif"))
+ARIDITYCOL<-crop(ARIDITY,MGNDEPTO)
+ARIDITYCAQUETA<-crop(ARIDITYCOL,CAQUETA) #>6.500 humid
+writeRaster(ARIDITYCAQUETA,here("ARIDITY INDEX/ARIDITYCAQUETA.tif"))
+ARIDITYCAQUETA<-raster(here("ARIDITY INDEX/ARIDITYCAQUETA.tif"))
+
+#SLOPE SRMT30 CAQUETA
+SRMT30CAQUETAvereda<-cbind(CAQUETAVEREDA[,c("CODIGO_VER")],exact_extract(CAQTERRAINSLOPE,CAQUETAVEREDA,"mean"))
+colnames(SRMT30CAQUETAvereda)[2]<-"SLOPEMEAN"
+SRMT30CAQUETAvereda$SLOPESCORE<-cut(SRMT30CAQUETAvereda$SLOPEMEAN,breaks=c(0,0.1,0.3,0.6,1.1,3,6,8.5,16.5,30,100),labels=c(10,9.9,9,8.9,8,7,6,5,2,1)) #Score slope
+st_write(SRMT30CAQUETAvereda,here('SHAPEFILES/SRMT30CAQUETAvereda.shp'))
+SRMT30CAQUETAvereda<-st_read(here('SHAPEFILES/SRMT30CAQUETAvereda.shp'))
+
+#SOILS QUAILITY INDEX SQ1 to SQ7 values 1 to 7 33.3%
+SOILSQVEREDAcaqueta<-cbind(CAQUETAVEREDA[,c("CODIGO_VER")],exact_extract(SOILSQcolombia,CAQUETAVEREDA,"mean"))
+colnames(SOILSQVEREDAcaqueta)[[2]]<-"SOILSQmean"
+SOILSQVEREDAcaqueta$SOILSQSCORE<-cut(SOILSQVEREDAcaqueta$SOILSQmean,breaks=c(1,1.5,2,3,4),include.lowest=T,right=T,labels=c(10,8,6,3)) #Score SOILSQ
+st_write(SOILSQVEREDAcaqueta,here('SHAPEFILES/SOILSQVEREDAcaqueta.shp'))
+SOILSQVEREDAcaqueta<-st_read(here('SHAPEFILES/SOILSQVEREDAcaqueta.shp'))
+
+#VEGETATION NDVI 16.6%
+VEGETATIONVEREDAcaqueta<-cbind(CAQUETAVEREDA[,c("CODIGO_VER")],exact_extract(VEGETATIONCOLOMBIA,CAQUETAVEREDA,"mean"))
+colnames(VEGETATIONVEREDAcaqueta)[[2]]<-"VEGETATIONmean"
+VEGETATIONVEREDAcaqueta$VEGSCORE<-cut(VEGETATIONVEREDAcaqueta$VEGETATIONmean,breaks=seq(0,255,by=25.5),include.lowest=T,right=T,labels=c(1:10)) #Score VEGETATION
+st_write(VEGETATIONVEREDAcaqueta,here('SHAPEFILES/VEGETATIONVEREDAcaqueta.shp'))
+VEGETATIONVEREDAcaqueta<-st_read(here('SHAPEFILES/VEGETATIONVEREDAcaqueta.shp'))
+
+#Aridity index 5.56%
+ARIDITY<-raster("ARIDITY INDEX/7504448/ai_et0/ai_et0.tif")
+ARIDITYCOL<-crop(ARIDITY,COLOMBIA)
+ARIDITYCAQUETA<-crop(ARIDITYCOL,CAQUETA) #>6.500 humid
+ARIDITYVEREDAcaqueta<-cbind(CAQUETAVEREDA[,c("CODIGO_VER")],exact_extract(ARIDITYCAQUETA,CAQUETAVEREDA,"mean"))
+colnames(ARIDITYVEREDAcaqueta)[[2]]<-"ARIDITYmean"
+ARIDITYVEREDAcaqueta$ARIDITYSCORE<-cut(ARIDITYVEREDAcaqueta$ARIDITYmean,breaks=c(0,300,2000,5000,6500,35000),rigth=T,labels=c(1,2,4,6,10))
+st_write(ARIDITYVEREDAcaqueta,here('SHAPEFILES/ARIDITYVEREDAcaqueta.shp'))
+ARIDITYVEREDAcaqueta<-st_read(here('SHAPEFILES/ARIDITYVEREDAcaqueta.shp'))
+
+#AGROSUITABILITY INDEX
+AGROSUITABILITY2<-Reduce(function(...)merge(...,all=T,by="CODIGO_"),list(CAQUETAVEREDA[,c("CODIGO_","NOMB_MPIO","AREA_HA")],st_drop_geometry(PRECVEREDAcaqueta),st_set_geometry(PTERMIcaqueta,NULL),st_set_geometry(SRMT30CAQUETAvereda,NULL),st_set_geometry(SOILSQVEREDAcaqueta,NULL),st_set_geometry(VEGETATIONVEREDAcaqueta,NULL),st_set_geometry(ARIDITYVEREDAcaqueta,NULL)))
+AGROSUITABILITY2$PRECSCO<-as.numeric(AGROSUITABILITY2$PRECSCO) #cut names when saving .shp to disk
+AGROSUITABILITY2$PTERMIS<-as.numeric(AGROSUITABILITY2$PTERMIS)
+AGROSUITABILITY2$SLOPESCORE<-as.numeric(AGROSUITABILITY2$SLOPESCORE)
+AGROSUITABILITY2$SOILSQS<-as.numeric(AGROSUITABILITY2$SOILSQS)
+AGROSUITABILITY2$VEGSCOR<-as.numeric(AGROSUITABILITY2$VEGSCOR)
+AGROSUITABILITY2$ARIDITYS<-as.numeric(AGROSUITABILITY2$ARIDITYS)
+AGROSUITABILITY2$AGSCORE<-with(AGROSUITABILITY2,(PTERMIS*0.033+PRECSCO*0.033+ARIDITYS*0.033+SOILSQS*0.60+SLOPESCORE*0.30))
+AGROSUITABILITY2$SCORE<-round(AGROSUITABILITY2$AGSCORE,digits=1) #Score of AGScore
+st_write(AGROSUITABILITY2,here('SHAPEFILES/AGROSUITABILITY2.shp'))
+AGROSUITABILITY2<-st_read(here('SHAPEFILES/AGROSUITABILITY2.shp'))
+
+
